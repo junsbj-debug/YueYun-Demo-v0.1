@@ -1,24 +1,26 @@
 # YueYun Demo v0.1
 
-启动日期：2026-10-05
+**English** | [简体中文](README.zh-CN.md)
 
-这是 YueYun 个人数字连续性系统的第一个可运行工程原型。
+Project start date: 2026-10-05
+
+The first runnable engineering prototype of the YueYun Personal Continuity system.
 
 ## What is YueYun Demo v0.1?
 
-一个 local-first 的 Personal Continuity 最小工程研究原型：验证长期个人 Memory 能否独立于具体 AI 模型，由用户保存、检索、选择和授权，并在不同模型之间重复使用。
+YueYun is a minimal, local-first engineering research prototype for personal continuity. It explores whether long-term personal Memory can remain independent of a specific AI model, under user control for storage, retrieval, selection, authorization, and reuse with different models.
 
-当前本地流程为：
+The current local workflow is:
 
 `Local Memory → Retrieval → User Selection → Permission → Context`
 
-Runtime 在内存中协调一次请求的 Run、状态与结束。模型不是 Memory 的所有者，只在用户明确授权后获得为本次请求准备的 Context；当前由用户手工提供该文本。
+The runtime coordinates each user request as an in-memory run, tracking its state and when it ends. A model does not own Memory. The user explicitly authorizes Context prepared for a particular request and manually provides that text to the model.
 
 ## What v0.1 validates
 
-- **Local Long-Term Memory**：用户明确确认后保存到本地 JSON，可以重新读取、检索和选择。已有最小 append-only Correction / Evolution，保留原记录。
-- **Manual Model Portability**：同一份用户侧 Memory 已经过独立授权，人工提供给 ChatGPT 和 Claude；两个模型均正确使用 Context。该结果不代表自动 API interoperability 或所有模型兼容。
-- **Permission Boundary**：人工验收支持正常 UI 流程中的 Deny、消费前 Revoke、消费后不可重复生成，以及本地生成与外部发送的区分。
+- **Local Long-Term Memory**: explicitly confirmed information is stored in local JSON and can be read, retrieved, and selected again. Minimal append-only Correction / Evolution preserves the original records.
+- **Manual Model Portability**: the same user-side Memory was independently authorized and manually provided to ChatGPT and Claude; both used the Context correctly. This does not establish automatic API interoperability or compatibility with all models.
+- **Permission Boundary**: manual acceptance supports Deny, pre-consumption Revoke, prevention of repeated generation after consumption, and the distinction between local generation and external delivery through the normal UI workflow.
 
 `Memory ≠ Permission`
 
@@ -28,128 +30,129 @@ Runtime 在内存中协调一次请求的 Run、状态与结束。模型不是 M
 
 `Pre-consumption Revoke ≠ Post-consumption Recall`
 
-验证范围是少量 fictional/demo data 与人工流程，不是完整 Personal AI、人格复制或生产级安全证明。
+Validation is limited to a small amount of fictional/demo data and manual workflows. It does not establish a complete Personal AI, a personality replica, or production-grade security.
 
 ## Architecture
 
-| 文件 | 当前职责 |
+| File | Current responsibility |
 | --- | --- |
-| [memory_store.py](memory_store.py) | 确认保存、读取与 append-only Memory 更新。 |
-| [retrieval.py](retrieval.py) | 关键词匹配及 current / historical / evolution / audit 查询。 |
-| [permissions.py](permissions.py) | 唯一授权边界：预览、批准/拒绝、撤销、失效、快照校验与一次性消费。 |
-| [model_adapters.py](model_adapters.py) | 经 Permission 消费批准对象，返回手动使用的纯文本 Context。 |
-| [runtime.py](runtime.py) | 内存 Run、草稿、事件摘要及流程协调，不恢复 grant。 |
-| [app.py](app.py) | localhost HTTP 服务与各模块接口连接、启动入口。 |
-| [ui/index.html](ui/index.html) | 浏览器单页 UI，内嵌 JavaScript / CSS。 |
+| [memory_store.py](memory_store.py) | Stores explicitly confirmed memories, reads records, and supports append-only updates. |
+| [retrieval.py](retrieval.py) | Keyword matching and current / historical / evolution / audit queries. |
+| [permissions.py](permissions.py) | The sole authorization boundary: preview, approve/deny, revoke, invalidate, snapshot validation, and one-time consumption. |
+| [model_adapters.py](model_adapters.py) | Consumes a Permission-approved object and returns plain-text Context for manual use. |
+| [runtime.py](runtime.py) | In-memory Runs, drafts, event summaries, and workflow coordination; does not restore grants. |
+| [app.py](app.py) | Localhost HTTP service, module integration, and startup entry point. |
+| [ui/index.html](ui/index.html) | Single-page browser UI with embedded JavaScript / CSS. |
 
 ## Requirements
 
-- Python **3.10+**，且终端中的 `python` 指向该版本。
-- Python standard library only；不需要第三方 Python package。
-- 支持 JavaScript 的浏览器。
-- 当前实际开发与人工 Acceptance 在 Windows 环境完成；未据此宣称其他系统已通过验收，也不限定代码只能在 Windows 运行。
+- Python **3.10+**, with `python` in the terminal pointing to that version.
+- Python standard library only; no third-party Python packages are required.
+- A browser with JavaScript enabled.
+- Development and manual Acceptance were performed on Windows. This does not establish acceptance on other operating systems or imply that the code can run only on Windows.
 
 ## Run locally
 
-在 Windows PowerShell 中进入项目目录并启动：
+In Windows PowerShell, enter the project directory and start the service:
 
 ```powershell
 Set-Location 'E:\YueYun\Demo-v0.1'
 python app.py
 ```
 
-如果项目位于其他目录，请替换路径。启动后保持终端运行，在浏览器打开：
+Replace the path if your project is elsewhere. Keep the terminal running and open:
 
 **http://127.0.0.1:8765/**
 
-服务仅监听 `127.0.0.1:8765`。停止服务请在启动终端按 **Ctrl+C**；关闭浏览器不等于停止后台服务，也不代表可靠撤销。服务重启后旧 Run 与运行时 grant 不恢复，必须重新授权。
+The service listens only on `127.0.0.1:8765`. Stop it with **Ctrl+C** in the startup terminal. Closing the browser neither stops the background service nor reliably revokes authorization. After a service restart, old Runs and runtime grants are not restored; authorization must be obtained again.
 
-当前没有双击启动脚本或自动打开浏览器功能。
+There is currently no double-click startup script or automatic browser opening.
 
 ## Minimal Demo Flow
 
-原本地实验环境已有虚构测试记录，可用关键词“游泳”，问题“小星周日喜欢做什么？”，用途“回答当前问题”进行人工 Demo；新 clone 默认不含这些历史 runtime 数据，不能直接复现该“小星”演示。
+The original local experiment environment contains fictional test records. A manual demo can use the keyword “游泳” (swimming), the question “小星周日喜欢做什么？” (What does Xiaoxing like doing on Sundays?), and the purpose “回答当前问题” (answer the current question). A fresh clone does not include these historical runtime records and cannot directly reproduce that Xiaoxing demo.
 
-1. 检索本地 Memory，并主动选择需要的记录。
-2. 填写 Target model（例如 `chatgpt`）、Purpose 和 Current question。
-3. 查看完整 Authorization Preview。
-4. 点击“仅本次授权”或“拒绝授权”；拒绝后不生成本次授权 Context。
-5. 批准后处于 Approved-Unconsumed，可在生成之前点击“撤销本次授权”。
-6. 如继续，主动点击“生成 Context”，消费一次授权，查看最终文本。
-7. 用户自行决定是否点击“复制 Context”，并手工提供给目标模型。
-8. 如需更换模型，重新预览并独立授权；如需结束本地 Run，点击“结束／取消本次运行”。
+1. Retrieve local Memory and explicitly select the records needed.
+2. Enter Target model (for example, `chatgpt`), Purpose, and Current question.
+3. Review the complete Authorization Preview.
+4. Click “仅本次授权” (authorize this request only) or “拒绝授权” (deny authorization). Denial does not generate authorized Context for this request.
+5. After approval, the workflow enters Approved-Unconsumed. Before generation, “撤销本次授权” (revoke this authorization) remains available.
+6. To continue, click “生成 Context” (generate Context), consume the authorization once, and inspect the final text.
+7. The user decides whether to click “复制 Context” (copy Context) and manually provide it to the target model. This is manual external disclosure.
+8. Switching models requires a new preview and independent authorization. To end the local Run, click “结束／取消本次运行” (end/cancel this Run).
 
-YueYun v0.1 不自动调用 ChatGPT / Claude API，不自动发送 Context，也不自动保存模型回复。
+YueYun v0.1 does not automatically call ChatGPT / Claude APIs, send Context, or save model responses.
 
-## Permission States
+## Runtime and Authorization Workflow States
 
-以下是 **Runtime 状态**；它们反映流程，不是可恢复或伪造权限的凭证。
+These are **Runtime states**. They describe the workflow and are not credentials that can restore or manufacture permission.
 
-| 状态 | 含义 |
+| State | Meaning |
 | --- | --- |
-| Preparing | 用户形成草稿、查询与选择，尚未建立授权预览。 |
-| Awaiting Decision | 已有预览，等待明确批准或拒绝。 |
-| Approved-Unconsumed | 已批准，尚未消费；可撤销。 |
-| Denied | 本次授权被拒绝，Run 终止。 |
-| Revoked | 尚未消费的授权已撤销，Run 终止。 |
-| Context Ready | 本地 Context 已生成，Permission 已消费；不表示已发送给外部模型。 |
-| Completed | 用户结束已生成 Context 的本地 Run；不表示模型已收到或回答。 |
-| Invalidated / Cancelled / Error | 绑定变化、用户取消或错误导致本次 Run 终止；不恢复旧权限。 |
+| Preparing | The user forms a draft, queries, and selects; no authorization preview has been established. |
+| Awaiting Decision | A preview exists and awaits explicit approval or denial. |
+| Approved-Unconsumed | Approved but not consumed; revocation is available. |
+| Denied | Authorization was denied; the Run terminates. |
+| Revoked | Unconsumed authorization was revoked; the Run terminates. |
+| Context Ready | Local Context was generated and Permission was consumed; this does not mean it was sent to an external model. |
+| Completed | The user ended a local Run after Context generation; this does not mean the model received it or answered. |
+| Invalidated / Cancelled / Error | A binding change, cancellation, or error terminates the Run; old permissions are not restored. |
 
-正常路径为 `Preparing → Awaiting Decision → Approved-Unconsumed → Context Ready → Completed`，拒绝或撤销走相应终止路径。一次授权只能消费一次；模型、用途、问题、选择或相关 Memory 状态变化后，旧绑定失效，需要重新授权。
+The normal path is `Preparing → Awaiting Decision → Approved-Unconsumed → Context Ready → Completed`. Denial or revocation takes the corresponding terminal path. Authorization can be consumed only once. Changes to the model, purpose, question, selection, or relevant Memory state invalidate the old binding and require new authorization.
 
 ## Acceptance Evidence
 
-四份正式人工 Acceptance 均记录为 **PASS**，结论限定于各文档说明的实验范围：
+Four formal manual Acceptance records report **PASS**, limited to the experimental scope described in each document:
 
-- [ACCEPTANCE_TEST_001.md](ACCEPTANCE_TEST_001.md) — Allow / Manual Cross-Model Portability。
-- [ACCEPTANCE_TEST_002.md](ACCEPTANCE_TEST_002.md) — Explicit Denial。
-- [ACCEPTANCE_TEST_003.md](ACCEPTANCE_TEST_003.md) — Pre-Consumption Revoke。
-- [ACCEPTANCE_TEST_004.md](ACCEPTANCE_TEST_004.md) — Post-Consumption Boundary。
+- [ACCEPTANCE_TEST_001.md](ACCEPTANCE_TEST_001.md) — Allow / Manual Cross-Model Portability.
+- [ACCEPTANCE_TEST_002.md](ACCEPTANCE_TEST_002.md) — Explicit Denial.
+- [ACCEPTANCE_TEST_003.md](ACCEPTANCE_TEST_003.md) — Pre-Consumption Revoke.
+- [ACCEPTANCE_TEST_004.md](ACCEPTANCE_TEST_004.md) — Post-Consumption Boundary.
 
-这些是用户真实操作与观察的记录，不是安全认证、渗透测试或自动回归测试；外部模型回答也不证明远程数据保留、删除或遗忘行为。
+These record actual user operations and observations. They are not security certification, penetration testing, or automated regression tests. External model responses do not prove remote data retention, deletion, or forgetting behavior.
 
 ## Data and Privacy
 
-当前运行数据目录：
+Current runtime data directories:
 
-- `data/memories/`：用户本地 Memory，每条一个 JSON。
-- `data/authorizations/`：授权决定与撤销事件审计。
+- `data/memories/`: user-local Memory, one JSON file per record.
+- `data/authorizations/`: authorization decisions and revocation audit events.
 
-Authorization decision audit 可能包含 question、purpose、完整 Context preview 和 Memory state snapshot。未来真实使用时，两类目录都可能包含敏感个人信息。**不要把真实个人运行数据直接提交到公开仓库。**
+Authorization decision audits may contain the question, purpose, complete Context preview, and Memory state snapshot. Both directories may contain sensitive personal information in future real use. **Do not submit real personal runtime data directly to a public repository.**
 
 ### Public Data Boundary
 
-`data/memories/` 和 `data/authorizations/` 属于本地运行数据，其内容由根目录 `.gitignore` 默认排除，不应提交到公开仓库；当前 fictional 测试数据也按运行数据处理。
+`data/memories/` and `data/authorizations/` contain local runtime data. The root `.gitignore` excludes their contents by default; they should not be committed to a public repository. Current fictional test records are also treated as runtime data.
 
-`.gitignore` 只影响未来 Git 对未跟踪文件的默认处理，不会删除、移动或修改本机现有数据，也不会自动取消已跟踪文件或清除历史提交中的数据。
+`.gitignore` only affects Git's default handling of untracked files going forward. It does not delete, move, or modify existing local data, untrack already tracked files, or remove data from commit history.
 
-新 clone 默认不包含历史 `data/memories/` 与 `data/authorizations/` runtime 内容，可在无数据状态下启动，但不能直接复现依赖原本地数据的“小星”演示。当前已有独立、经过整理的 [林晓 fictional example](examples/linxiao/README.md)，位于 `examples/linxiao/`；Runtime 不会自动加载这些示例，当前没有新增 import/load 功能。不得为了让公开证据链接可用而复制 runtime JSON；示例与运行数据边界保持分离。
+A fresh clone does not include historical runtime contents from these directories. It can start with no data, but cannot directly reproduce the Xiaoxing demo that depends on the original local records. An independently curated [Linxiao fictional example](examples/linxiao/README.md) is available in `examples/linxiao/`. Runtime does not automatically load these examples; no import/load feature has been added. Do not copy runtime JSON to make public evidence links work. Examples and runtime data remain separate.
 
-Authorization audit 可能包含问题、用途、Context Preview 和 Memory snapshot，即使是拒绝记录，也应按潜在个人数据处理。这一发布边界不是完整隐私保护、安全认证或数据擦除机制。
+Even denied authorization audits may contain questions, purposes, Context Previews, and Memory snapshots and must be treated as potentially personal data. This publication boundary is not complete privacy protection, security certification, or a data-erasure mechanism.
 
-Deny 阻止本次正常模型使用路径，但授权决定仍会作为本地 audit 保存，包括当时的预览；拒绝不等于本地完全没有记录。Revoke 撤销使用权，不删除 Memory。Audit JSON 是历史记录，不是恢复 grant 的权限凭证。
+Deny blocks the normal model-use path for that request, but the decision and its preview are still stored in a local audit. Denial does not mean no local record exists. Revoke terminates usage permission; it does not delete Memory. Audit JSON is historical evidence, not a credential for restoring grants.
 
-数据目前为明文，不提供加密或进程间安全隔离。用户人工向外部模型提供 Context 后，本地 Revoke 无法远程追回文本、强制删除或保证模型遗忘。
+Data is currently plaintext, with no encryption or inter-process security isolation. After a user manually provides Context to an external model, local Revoke cannot remotely recall the text, force deletion, or guarantee that the model forgets it.
 
 ## Current Limitations
 
-以下是 v0.1 的 scope boundary：
+The v0.1 scope boundaries are:
 
-- Manual Context transfer only；没有自动模型 API 调用或切换。
-- Single local user、localhost only；没有生产级多用户或远程部署能力。
-- 没有加密层、DID 或云同步。
-- Runtime 仅在内存中；没有跨进程 grant 恢复或持久化消费账本。
-- 没有披露后的 remote recall；无法控制用户复制文本的实际去向。
-- 未验证大规模 Memory、长期稳定性或全部并发/崩溃边界。
-- 没有安全认证或渗透测试，不作生产部署或绝对隐私保证。
+- Manual Context transfer only; no automatic model API calls or switching.
+- A single local user and localhost only; no production-grade multi-user or remote deployment capability.
+- No encryption layer, DID, or cloud synchronization.
+- In-memory Runtime only; no cross-process grant restoration or persistent consumption ledger.
+- No remote recall after disclosure; the destination of user-copied text is outside the program's control.
+- Large-scale Memory, long-term stability, and all concurrency/crash boundaries have not been validated.
+- No security certification or penetration testing; no production-deployment or absolute-privacy guarantees.
 
 ## Project Status
 
 **YueYun Demo v0.1 — Status: FEATURE FROZEN**
 
-- 4 formal manual Acceptance tests：**PASS**。
-- 历史 Read-only Freeze Audit verdict：**READY FOR FEATURE FREEZE AFTER MINOR CLEANUP**；所需 cleanup 已完成。
-- 已于 2026-10-06 正式 Feature Freeze，依据见 [FEATURE_FREEZE_v0.1.md](FEATURE_FREEZE_v0.1.md)。
+- 4 formal manual Acceptance tests: **PASS**.
+- Historical read-only Freeze Audit verdict: **READY FOR FEATURE FREEZE AFTER MINOR CLEANUP**; the required cleanup was completed.
+- Feature Freeze was declared on 2026-10-06; see [FEATURE_FREEZE_v0.1.md](FEATURE_FREEZE_v0.1.md).
+- v0.1.0 has been publicly released as YueYun Demo's first frozen research prototype. **FEATURE FROZEN** remains in effect.
 
-Feature Freeze 仅锁定 v0.1 最小工程研究原型的功能范围，不等于产品 Final Release、安全认证或已经公开发布。
+Feature Freeze locks the validated functional scope. It does not mean a mature/final product release, security certification, production readiness, or the end of the project; v0.1.0 is a published research-prototype release, not a finished or production-ready product. The `main` branch may contain documented post-freeze bugfixes and documentation improvements without changing the v0.1.0 release anchor.
