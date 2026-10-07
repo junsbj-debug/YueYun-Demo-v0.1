@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "id": "4ec7f719-669e-4680-b1af-6e4bdb93e666",
+  "content": "虚构 Demo 数据：林晓希望AI给建议时先给结论，再说明原因，不需要过度寒暄。",
+  "tags": [
+    "fictional",
+    "AI",
+    "表达偏好"
+  ],
+  "source": "fictional demo fixture / explicitly confirmed",
+  "user_confirmed": true,
+  "created_at": "2026-10-06T22:24:29.9699103+08:00"
+}

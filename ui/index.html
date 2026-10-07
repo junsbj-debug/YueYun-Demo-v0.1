@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>YueYun Demo v0.1</title>
+  <style>
+    body { margin: 0; background: #f5f7fa; color: #243247; font-family: "Microsoft YaHei", sans-serif; line-height: 1.7; }
+    main { max-width: 880px; margin: 48px auto; padding: 0 24px; }
+    h1 { margin-bottom: 8px; }
+    .intro { color: #59677b; margin-bottom: 28px; }
+    .memory { background: white; border: 1px solid #dde3ec; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    h2 { margin-top: 0; font-size: 20px; }
+    h3 { font-size: 16px; }
+    dl { display: grid; grid-template-columns: 100px 1fr; gap: 10px 16px; }
+    dt { color: #59677b; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    .content { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .selection { background: #eaf0f8; padding: 16px; border-radius: 8px; margin-bottom: 24px; }
+    .select-memory { display: block; margin-bottom: 16px; cursor: pointer; }
+    input[type="checkbox"] { width: 18px; height: 18px; vertical-align: middle; margin-right: 8px; }
+    .preview-form, #preview { background: white; border: 1px solid #dde3ec; padding: 24px; border-radius: 12px; margin-top: 24px; }
+    .preview-form label { display: block; margin: 12px 0; }
+    .preview-form input, .preview-form select, textarea { display: block; box-sizing: border-box; width: 100%; padding: 10px; font: inherit; }
+    button { padding: 10px 18px; font: inherit; cursor: pointer; }
+    #preview-status { color: #8b3c14; }
+    #context-region { background: white; border: 1px solid #dde3ec; padding: 24px; border-radius: 12px; margin-top: 24px; }
+    #context-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+    @media (max-width: 560px) { main { margin-top: 24px; } dl { grid-template-columns: 1fr; gap: 4px; } dd { margin-bottom: 12px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>YueYun Demo v0.1</h1>
+    <p class="intro">本地 Memory · 用户确认与控制<br>更新只追加新记录，保留原始记录。</p>
+    <section class="selection" aria-label="本次运行">
+      <strong id="run-status">Run：Preparing</strong>
+      <p id="run-id"></p>
+      <p id="run-events"></p>
+      <p>Completed 仅表示本地运行结束，不表示已发送给模型或模型回答成功。刷新或关闭页面不代表可靠撤销。</p>
+      <button id="run-end-button" type="button">结束／取消本次运行</button>
+    </section>
+    <section class="selection" aria-label="当前选择" aria-live="polite">
+      <strong>已选择 <span id="selected-count">0</span> 条 Memory</strong>
+      <ul id="selected-ids"></ul>
+      <p>选择仅保留在当前页面，不代表授权，也不会生成 Context。</p>
+    </section>
+    <section class="preview-form" aria-label="检索本地 Memory">
+      <h2>检索本地 Memory</h2>
+      <label>查询模式<select id="retrieval-mode">
+        <option value="current">当前状态</option><option value="historical">历史状态</option>
+        <option value="evolution">变化历史</option><option value="audit">审计记录</option>
+      </select></label>
+      <label id="date-label" hidden>历史查询日期 YYYY-MM-DD<input id="query-date" type="date"></label>
+      <label id="chain-label" hidden>查看变化历史的 Memory ID<input id="chain-id" type="text"></label>
+      <label>关键词<input id="search-keyword" type="text" placeholder="例如：科幻或阅读"></label>
+      <button id="search-button" type="button">检索</button>
+      <p id="search-status" role="status" aria-live="polite"></p>
+      <p>检索 ≠ 选择；选择 ≠ 授权；授权 ≠ 发送给模型。</p>
+    </section>
+    <section id="memory-list" aria-label="本地 Memory 列表">
+      <h2 id="list-heading">现有当前有效 Memory</h2>
+      <div id="memory-cards">
+      </div>
+    </section>
+    <noscript>请启用此本地页面的 JavaScript，才能更新选择数量及查看授权预览。</noscript>
+    <section id="update-form" class="preview-form" hidden>
+      <h2>更新这条 Memory</h2>
+      <p id="update-original" class="content"></p>
+      <label>更新语义<select id="update-type"><option value="">请明确选择</option><option value="correction">纠正原记录</option><option value="evolution">我的情况发生了变化</option></select></label>
+      <p id="update-meaning"></p>
+      <label>新内容<textarea id="update-content" rows="3"></textarea></label>
+      <label>标签（JSON 字符串数组）<input id="update-tags" type="text"></label>
+      <label>来源<input id="update-source" type="text"></label>
+      <label id="update-date-label" hidden>生效日期 YYYY-MM-DD<input id="update-date" type="date"></label>
+      <button id="update-preview-button" type="button">查看更新预览</button>
+      <button id="update-cancel" type="button">取消更新</button>
+      <div id="update-preview" hidden><h3>更新预览（尚未保存）</h3><pre id="update-preview-text" class="content"></pre>
+        <button id="update-save-button" type="button" disabled>确认保存此次更新</button>
+      </div>
+      <p id="update-status" role="status" aria-live="polite"></p>
+    </section>
+    <section class="preview-form" aria-label="授权预览输入">
+      <h2>准备授权预览</h2>
+      <p id="authorization-scope">本次授权的是当前状态。</p>
+      <label>目标模型<input id="target-model" type="text" placeholder="例如：Claude"></label>
+      <label>本次用途<input id="purpose" type="text" placeholder="例如：回答当前问题"></label>
+      <label>当前问题<textarea id="question" rows="3" placeholder="例如：小星周六喜欢做什么？"></textarea></label>
+      <button id="preview-button" type="button">查看授权预览</button>
+      <p id="preview-status" role="status" aria-live="polite"></p>
+    </section>
+    <section id="preview" hidden>
+      <h2 id="decision-heading">授权预览（未授权）</h2>
+      <strong id="decision-notice">这只是授权预览，尚未授权，任何 Memory 均未发送给模型。</strong>
+      <div id="preview-details"></div>
+      <button id="approve-button" type="button" disabled>仅本次授权</button>
+      <button id="deny-button" type="button" disabled>拒绝授权</button>
+      <button id="generate-button" type="button" hidden disabled>生成 Context</button>
+      <button id="revoke-button" type="button" hidden disabled>撤销本次授权</button>
+    </section>
+    <section id="context-region" hidden>
+      <h2>已授权 Context</h2>
+      <p>Context 已生成，但尚未发送给任何模型。</p>
+      <pre id="context-text"></pre>
+      <button id="copy-button" type="button" disabled>复制 Context</button>
+      <p id="copy-status" role="status"></p>
+    </section>
+  </main>
+  <script>
+    const searchInput = document.getElementById('search-keyword');
+    const searchButton = document.getElementById('search-button');
+    const searchStatus = document.getElementById('search-status');
+    const memoryCards = document.getElementById('memory-cards');
+    const modeInput = document.getElementById('retrieval-mode');
+    const dateInput = document.getElementById('query-date');
+    const chainInput = document.getElementById('chain-id');
+    const authorizationScope = document.getElementById('authorization-scope');
+    const initialMemories = __INITIAL_MEMORIES__;
+    let activeQuery = { mode: initialMemories.mode, query_date: initialMemories.query_date };
+    const updateForm = document.getElementById('update-form');
+    const updateType = document.getElementById('update-type');
+    const updateContent = document.getElementById('update-content');
+    const updateTags = document.getElementById('update-tags');
+    const updateSource = document.getElementById('update-source');
+    const updateDate = document.getElementById('update-date');
+    const updatePreview = document.getElementById('update-preview');
+    const updateSave = document.getElementById('update-save-button');
+    const updateStatus = document.getElementById('update-status');
+    let updateOriginal = null;
+    let updateDraft = null;
+    let updateRevision = 0;
+    let saving = false;
+    const count = document.getElementById('selected-count');
+    const ids = document.getElementById('selected-ids');
+    const modelInput = document.getElementById('target-model');
+    const purposeInput = document.getElementById('purpose');
+    const questionInput = document.getElementById('question');
+    const preview = document.getElementById('preview');
+    const details = document.getElementById('preview-details');
+    const status = document.getElementById('preview-status');
+    const approveButton = document.getElementById('approve-button');
+    const denyButton = document.getElementById('deny-button');
+    const heading = document.getElementById('decision-heading');
+    const notice = document.getElementById('decision-notice');
+    const generateButton = document.getElementById('generate-button');
+    const revokeButton = document.getElementById('revoke-button');
+    const contextRegion = document.getElementById('context-region');
+    const contextText = document.getElementById('context-text');
+    const copyButton = document.getElementById('copy-button');
+    const copyStatus = document.getElementById('copy-status');
+    let approvedRequest = null;
+    let generating = false;
+    let revoking = false;
+    const headers = { 'Content-Type': 'application/json', 'X-Preview-Token': '__PREVIEW_TOKEN__', 'X-Page-Session': '__PAGE_SESSION__' };
+    let activeRequest = null;
+    let invalidation = Promise.resolve();
+    let deciding = false;
+    function inputs() {
+      return {
+        selected_memory_ids: choices.filter((choice) => choice.checkbox.checked).map((choice) => choice.memoryId),
+        target_model: modelInput.value.trim(), purpose: purposeInput.value.trim(),
+        user_question: questionInput.value.trim(),
+        selection_mode: modeInput.value,
+        query_date: modeInput.value === 'historical' ? dateInput.value : (activeQuery ? activeQuery.query_date : null)
+      };
+    }
+    let revision = 0;
+    function showRun(run) {
+      if (!run) return;
+      document.getElementById('run-status').textContent = 'Run：' + run.status;
+      document.getElementById('run-id').textContent = 'run_id：' + run.run_id;
+      document.getElementById('run-events').textContent = run.events.map((event) => event.action + ' [' + event.status + ']' + (event.reason ? ' {' + event.source + ': ' + event.reason + '}' : '')).join(' → ');
+      document.getElementById('run-end-button').disabled = ['Completed','Denied','Revoked','Invalidated','Cancelled','Error'].includes(run.status);
+    }
+    showRun(initialMemories.run);
+    function clearPreviewDisplay() {
+      revision += 1;
+      activeRequest = null;
+      approvedRequest = null;
+      generateButton.hidden = true;
+      generateButton.disabled = true;
+      revokeButton.hidden = true;
+      revokeButton.disabled = true;
+      contextRegion.hidden = true;
+      contextText.textContent = '';
+      copyButton.disabled = true;
+      copyStatus.textContent = '';
+      approveButton.disabled = true;
+      denyButton.disabled = true;
+      preview.hidden = true;
+      details.replaceChildren();
+      status.textContent = '输入或选择已变化，请重新点击“查看授权预览”。';
+      return revision;
+    }
+    function queueRunUpdate(path, payload, currentRevision) {
+      invalidation = invalidation.catch(() => {}).then(async () => {
+        const response = await fetch(path, { method: 'POST', headers, body: JSON.stringify(payload), cache: 'no-store' });
+        const result = await response.json();
+        if (revision === currentRevision) showRun(result.run);
+        if (!response.ok) throw new Error(result.error || '运行状态同步失败，请刷新页面。');
+      });
+      invalidation.catch(() => {});
+    }
+    function syncPreparingDraft() {
+      const payload = inputs();
+      queueRunUpdate('/draft', payload, clearPreviewDisplay());
+    }
+    function queuePreviewCleanup({clearQuery = false, clearUpdate = false, reason = 'preview_cleanup'} = {}) {
+      // Server decides whether a real Permission binding needs termination.
+      queueRunUpdate('/invalidate', {clear_query: clearQuery, clear_update: clearUpdate, reason}, clearPreviewDisplay());
+    }
+    let choices = [];
+    function bindChoices() {
+      choices = Array.from(memoryCards.querySelectorAll('.memory')).filter((card) => card.querySelector('input[type="checkbox"]')).map((card) => {
+      const memoryId = card.querySelector('dd').textContent;
+      const checkbox = card.querySelector('input[type="checkbox"]');
+      checkbox.checked = false;
+      checkbox.autocomplete = 'off';
+      return { checkbox, memoryId };
+      });
+      choices.forEach((choice) => choice.checkbox.addEventListener('change', () => {
+        updateSelection();
+        syncPreparingDraft();
+      }));
+      updateSelection();
+    }
+    function updateSelection() {
+      const selected = choices.filter((choice) => choice.checkbox.checked);
+      count.textContent = String(selected.length);
+      ids.replaceChildren(...selected.map((choice) => {
+        const item = document.createElement('li');
+        item.textContent = choice.memoryId;
+        return item;
+      }));
+    }
+    function resetSearch() {
+      queuePreviewCleanup({clearQuery: true, reason: 'query_changed'});
+      activeQuery = null;
+      memoryCards.replaceChildren();
+      choices = [];
+      updateSelection();
+    }
+    searchInput.addEventListener('input', () => {
+      resetSearch();
+      searchStatus.textContent = '关键词已变化，请点击“检索”。';
+    });
+    async function runSearch() {
+      if (deciding || generating || revoking || saving) return;
+      resetSearch();
+      const currentRevision = revision;
+      const keyword = searchInput.value.trim();
+      const mode = modeInput.value;
+      if (mode !== 'evolution' && !keyword) { searchStatus.textContent = '请输入检索关键词。'; return; }
+      if (mode === 'historical' && !dateInput.value) { searchStatus.textContent = '请填写历史查询日期 YYYY-MM-DD。'; return; }
+      if (mode === 'evolution' && !chainInput.value.trim()) { searchStatus.textContent = '请指定一条 Memory ID。'; return; }
+      searchStatus.textContent = '正在检索本地 Memory……';
+      try {
+        await invalidation;
+        if (revision !== currentRevision) return;
+        const response = await fetch('/search', {
+          method: 'POST', headers, body: JSON.stringify({ keyword, mode,
+            query_date: mode === 'historical' ? dateInput.value : null,
+            memory_id: mode === 'evolution' ? chainInput.value.trim() : null }), cache: 'no-store'
+        });
+        const result = await response.json();
+        if (revision !== currentRevision) return;
+        showRun(result.run);
+        if (!response.ok) throw new Error(result.error || '检索失败');
+        activeQuery = { mode: result.mode, query_date: result.query_date };
+        renderMemories(result);
+        searchStatus.textContent = result.results.length ? '找到 ' + result.results.length + ' 条 Memory；查询日期：' + result.query_date + (['audit','evolution'].includes(mode) ? '。仅供查看，不代表选择或授权。' : '。请主动选择。') : '未找到匹配的 Memory。';
+      } catch (error) {
+        if (revision === currentRevision) searchStatus.textContent = error.message;
+      }
+    }
+    searchButton.addEventListener('click', runSearch);
+    function renderMemories(result) {
+        memoryCards.replaceChildren();
+        document.getElementById('list-heading').textContent = {current:'当前状态', historical:'历史状态', evolution:'变化历史（展示整条链不代表授权整条链）', audit:'审计记录（仅供查看）'}[result.mode];
+        authorizationScope.textContent = result.mode === 'historical' ? '本次授权的是历史状态；query_date：' + result.query_date : result.mode === 'current' ? '本次授权的是当前状态；query_date：' + result.query_date : '审计/变化历史不能直接授权。请通过当前或历史状态检索明确选择。';
+        result.results.forEach((memory, index) => {
+          const card = document.createElement('article');
+          card.className = 'memory';
+          const heading = document.createElement('h2');
+          heading.textContent = (result.mode === 'evolution' ? '第 ' + (index + 1) + ' 个状态 · ' : '') + (result.mode === 'historical' && memory.status === 'current_valid' ? '历史查询日期有效' : memory.status_label);
+          const label = document.createElement('label');
+          label.className = 'select-memory';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = false;
+          label.append(checkbox, document.createTextNode('选择这条 Memory'));
+          const dl = document.createElement('dl');
+          const explanation = (memory.matches || []).map((match) => '关键词“' + match.keyword + '”命中 ' + match.fields.join('、')).join('；');
+          [['ID', memory.id], ['source', memory.source], ['tags', JSON.stringify(memory.tags)],
+           ['created_at', memory.created_at], ['content', memory.content],
+           ['状态', result.mode === 'historical' && memory.status === 'current_valid' ? '历史查询日期有效（不表示当前偏好）' : memory.status_label],
+           ['生效日期 effective_from', memory.effective_from || '未明确记录'],
+           ['effective_until（不含截止日）', memory.effective_until || '未指定'],
+           ['relationship_type', memory.relationship_type || '无'], ['previous_memory_id', memory.previous_memory_id || '无'],
+           ['query_date', result.query_date], ['命中原因', explanation || '明确查看记录']].forEach(([name, value]) => {
+            const dt = document.createElement('dt');
+            const dd = document.createElement('dd');
+            dt.textContent = name;
+            dd.textContent = value;
+            dd.className = 'content';
+            dl.append(dt, dd);
+          });
+          card.append(heading, dl);
+          if (memory.selectable) card.append(label);
+          const note = document.createElement('p');
+          note.textContent = memory.status === 'corrected' ? '此记录已被用户纠正，仅供审计查看，不能作为普通事实授权。' : memory.status === 'future' ? '尚未生效，不能作为当前状态授权。' : ['audit','evolution'].includes(result.mode) ? '此模式仅供查看；历史授权须通过历史状态查询明确选择。' : '';
+          card.append(note);
+          const chainButton = document.createElement('button');
+          chainButton.type = 'button'; chainButton.textContent = '查看变化历史';
+          chainButton.addEventListener('click', () => { modeInput.value = 'evolution'; chainInput.value = memory.id; changeMode(); runSearch(); });
+          card.append(chainButton);
+          if (memory.can_update) {
+            const updateButton = document.createElement('button'); updateButton.type = 'button'; updateButton.textContent = '更新这条 Memory';
+            updateButton.addEventListener('click', () => openUpdate(memory)); card.append(updateButton);
+          }
+          memoryCards.append(card);
+        });
+        bindChoices();
+    }
+    function changeMode() {
+      document.getElementById('date-label').hidden = modeInput.value !== 'historical';
+      document.getElementById('chain-label').hidden = modeInput.value !== 'evolution';
+      searchInput.disabled = modeInput.value === 'evolution';
+      resetSearch();
+      authorizationScope.textContent = modeInput.value === 'historical' ? '本次授权的是历史状态。请先填写日期并检索。' : ['audit','evolution'].includes(modeInput.value) ? '此模式仅供查看，不能直接授权。' : '本次授权的是当前状态。';
+      searchStatus.textContent = '查询条件已变化，请重新检索。';
+    }
+    modeInput.addEventListener('change', changeMode);
+    [dateInput, chainInput].forEach((input) => input.addEventListener('input', () => { resetSearch(); searchStatus.textContent = '查询条件已变化，请重新检索。'; }));
+    [modelInput, purposeInput, questionInput].forEach((input) => input.addEventListener('input', () => syncPreparingDraft()));
+    renderMemories(initialMemories);
+    function addPreviewText(label, value) {
+      const item = document.createElement('p');
+      item.className = 'content';
+      item.textContent = label + '：' + value;
+      details.append(item);
+    }
+    document.getElementById('preview-button').addEventListener('click', async () => {
+      clearPreviewDisplay();
+      const currentRevision = revision;
+      const data = inputs();
+      const missing = [];
+      if (!data.selected_memory_ids.length) missing.push('至少选择 1 条 Memory');
+      if (!data.target_model) missing.push('目标模型');
+      if (!data.purpose) missing.push('本次用途');
+      if (!data.user_question) missing.push('当前问题');
+      if (!activeQuery || !['current','historical'].includes(data.selection_mode)) missing.push('先完成当前/历史状态检索');
+      if (missing.length) { status.textContent = '请填写或选择：' + missing.join('、'); return; }
+      status.textContent = '正在读取本地记忆预览……';
+      try {
+        await invalidation;
+        if (revision !== currentRevision) return;
+        const response = await fetch('/preview', {
+          method: 'POST', headers,
+          body: JSON.stringify(data), cache: 'no-store'
+        });
+        const result = await response.json();
+        if (revision !== currentRevision) return;
+        showRun(result.run);
+        if (!response.ok) throw new Error(result.error || '无法生成预览');
+        if (result.status !== 'pending' || result.user_approved !== null) throw new Error('预览状态不正确');
+        addPreviewText('目标模型', result.target_model);
+        addPreviewText('本次用途', result.purpose);
+        addPreviewText('当前问题', result.user_question);
+        addPreviewText('selection_mode', result.selection_mode);
+        addPreviewText('query_date', result.query_date);
+        if (result.selection_mode === 'historical') addPreviewText('授权性质', '本次授权的是历史状态，不表示当前偏好');
+        addPreviewText('准备使用的 Memory 数量', String(result.memories.length));
+        result.memories.forEach((memory) => {
+          addPreviewText('Memory ID', memory.id);
+          addPreviewText('source', memory.source);
+          addPreviewText('tags', JSON.stringify(memory.tags));
+          addPreviewText('created_at', memory.created_at);
+          addPreviewText('content', memory.content);
+          addPreviewText('effective_from', memory.effective_from || '未明确记录');
+          addPreviewText('effective_until', memory.effective_until || '未指定');
+          addPreviewText('relationship_type', memory.relationship_type || '无');
+          addPreviewText('previous_memory_id', memory.previous_memory_id || '无');
+        });
+        addPreviewText('准备提供的完整 Context 预览（尚未授权）', result.context_preview);
+        preview.hidden = false;
+        activeRequest = { authorization_id: result.authorization_id, ...data };
+        heading.textContent = '授权预览（未授权）';
+        notice.textContent = '这只是授权预览，尚未授权，任何 Memory 均未发送给模型。';
+        approveButton.disabled = false;
+        denyButton.disabled = false;
+        status.textContent = '预览已生成，尚未授权。';
+      } catch (error) {
+        if (revision === currentRevision) status.textContent = error.message;
+      }
+    });
+    async function decide(userApproved) {
+      if (!activeRequest || deciding || revoking || JSON.stringify(inputs()) !== JSON.stringify({
+        selected_memory_ids: activeRequest.selected_memory_ids,
+        target_model: activeRequest.target_model, purpose: activeRequest.purpose,
+        user_question: activeRequest.user_question, selection_mode: activeRequest.selection_mode, query_date: activeRequest.query_date
+      })) return;
+      const request = activeRequest;
+      const currentRevision = revision;
+      deciding = true;
+      activeRequest = null;
+      approveButton.disabled = true;
+      denyButton.disabled = true;
+      const controls = pageControls();
+      controls.forEach((control) => { control.disabled = true; });
+      status.textContent = '正在保存本次决定……';
+      try {
+        const response = await fetch('/decision', {
+          method: 'POST', headers,
+          body: JSON.stringify({ ...request, user_approved: userApproved }), cache: 'no-store'
+        });
+        const result = await response.json();
+        if (revision !== currentRevision) return;
+        showRun(result.run);
+        if (!response.ok) throw new Error(result.error || '决定未保存，请重新生成预览');
+        heading.textContent = result.status === 'approved' ? '本次已授权' : '本次已拒绝';
+        if (result.status === 'approved') {
+          approvedRequest = request;
+          generateButton.hidden = false;
+          generateButton.disabled = false;
+          revokeButton.hidden = false;
+          revokeButton.disabled = false;
+        }
+        notice.textContent = result.status === 'approved'
+          ? '本次已授权，但尚未生成/发送 Context，任何 Memory 均未发送给模型。'
+          : '本次已拒绝，未生成 Context，任何 Memory 均未发送给模型。';
+        status.textContent = '决定已保存；如需再次决定，请重新生成授权预览。';
+      } catch (error) {
+        if (revision === currentRevision) status.textContent = error.message + '；请重新生成预览。';
+      } finally {
+        deciding = false;
+        controls.forEach((control) => { control.disabled = false; });
+        searchInput.disabled = modeInput.value === 'evolution';
+      }
+    }
+    approveButton.addEventListener('click', () => decide(true));
+    denyButton.addEventListener('click', () => decide(false));
+    function approvalMatchesInputs() {
+      return approvedRequest && JSON.stringify(inputs()) === JSON.stringify({
+        selected_memory_ids: approvedRequest.selected_memory_ids,
+        target_model: approvedRequest.target_model, purpose: approvedRequest.purpose,
+        user_question: approvedRequest.user_question, selection_mode: approvedRequest.selection_mode, query_date: approvedRequest.query_date
+      });
+    }
+    generateButton.addEventListener('click', async () => {
+      if (!approvalMatchesInputs() || generating || revoking || generateButton.disabled) return;
+      generating = true;
+      generateButton.disabled = true;
+      revokeButton.hidden = true;
+      revokeButton.disabled = true;
+      const currentRevision = revision;
+      const controls = pageControls();
+      controls.forEach((control) => { control.disabled = true; });
+      try {
+        const response = await fetch('/context', {
+          method: 'POST', headers, body: JSON.stringify(approvedRequest), cache: 'no-store'
+        });
+        const result = await response.json();
+        if (revision !== currentRevision) return;
+        showRun(result.run);
+        if (!response.ok) throw new Error(result.error || 'Context 生成失败，请重新预览并授权。');
+        contextText.textContent = result.context;
+        contextRegion.hidden = false;
+        copyButton.disabled = false;
+        heading.textContent = '本次授权已消费';
+        notice.textContent = '本次授权已消费，不能再次生成 Context。已生成文本无法远程撤回，无法保证外部模型删除数据。';
+        status.textContent = 'Context 已生成，但尚未发送给任何模型。再次生成需要重新预览并授权。';
+      } catch (error) {
+        if (revision === currentRevision) {
+          queuePreviewCleanup({reason: 'context_error'});
+          status.textContent = error.message + '；请重新预览并授权。';
+        }
+      } finally {
+        generating = false;
+        controls.forEach((control) => { control.disabled = false; });
+        searchInput.disabled = modeInput.value === 'evolution';
+      }
+    });
+    revokeButton.addEventListener('click', async () => {
+      if (!approvalMatchesInputs() || revokeButton.disabled || generating || revoking || deciding || saving || !contextRegion.hidden) return;
+      revoking = true;
+      const currentRevision = revision;
+      approvedRequest = null;
+      revokeButton.disabled = true;
+      generateButton.disabled = true;
+      const controls = pageControls();
+      controls.forEach((control) => { control.disabled = true; });
+      status.textContent = '正在终止本次授权……';
+      try {
+        await invalidation;
+        const response = await fetch('/revoke', { method: 'POST', headers, body: '{}', cache: 'no-store' });
+        const result = await response.json();
+        if (revision !== currentRevision) return;
+        showRun(result.run);
+        if (!response.ok || result.status !== 'revoked') throw new Error(result.error || '撤销结果未确认');
+        heading.textContent = '本次授权已撤销';
+        notice.textContent = '本次授权已撤销，不能再生成 Context；再次使用需要重新预览并授权。';
+        status.textContent = result.audit_saved ? '撤销审计已保存；原批准记录保持不变。' : '授权已不可用，但撤销审计保存失败';
+      } catch (error) {
+        if (revision === currentRevision) {
+          queuePreviewCleanup({reason: 'revoke_error'});
+          status.textContent = error.message + '；已禁用生成，请刷新或重新检索后授权。';
+        }
+      } finally {
+        revoking = false;
+        revokeButton.hidden = true; revokeButton.disabled = true;
+        generateButton.hidden = true; generateButton.disabled = true;
+        controls.forEach((control) => { control.disabled = false; });
+        searchInput.disabled = modeInput.value === 'evolution';
+      }
+    });
+    copyButton.addEventListener('click', async () => {
+      if (copyButton.disabled || contextRegion.hidden || !approvalMatchesInputs()) return;
+      const currentRevision = revision;
+      try {
+        await navigator.clipboard.writeText(contextText.textContent);
+        if (revision === currentRevision) copyStatus.textContent = 'Context 已复制，尚未发送给任何模型。';
+      } catch (error) {
+        if (revision === currentRevision) copyStatus.textContent = '浏览器未允许复制，请手动选择上方文本复制。';
+      }
+    });
+    document.getElementById('run-end-button').addEventListener('click', async () => {
+      if (deciding || generating || revoking || saving) return;
+      const button = document.getElementById('run-end-button');
+      button.disabled = true;
+      const controls = pageControls();
+      controls.forEach((control) => { control.disabled = true; });
+      try {
+        await invalidation;
+        const response = await fetch('/run-end', { method: 'POST', headers, body: '{}', cache: 'no-store' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || '运行结束未确认');
+        clearPreviewDisplay();
+        updateDraft = null; updateSave.disabled = true; updatePreview.hidden = true;
+        choices.forEach((choice) => { choice.checkbox.checked = false; }); updateSelection();
+        showRun(result.run);
+        status.textContent = result.status === 'Completed'
+          ? '本次运行已结束；不表示 Context 已发送给模型。'
+          : '本次运行已终止；再次使用需要新的预览和授权。';
+      } catch (error) {
+        queuePreviewCleanup({reason: 'run_end_error'});
+        status.textContent = error.message + '；请刷新或重新检索。';
+      } finally {
+        controls.forEach((control) => { control.disabled = false; });
+        searchInput.disabled = modeInput.value === 'evolution';
+      }
+    });
+    function pageControls() {
+      return Array.from(document.querySelectorAll('input, select, textarea, button')).filter((control) =>
+        !['approve-button','deny-button','generate-button','revoke-button','copy-button','update-save-button','run-end-button'].includes(control.id));
+    }
+    function clearUpdateDraft() {
+      updateRevision += 1;
+      updateDraft = null;
+      updateSave.disabled = true;
+      updatePreview.hidden = true;
+      document.getElementById('update-preview-text').textContent = '';
+      queuePreviewCleanup({clearUpdate: true, reason: 'update_draft_changed'});
+    }
+    function updateMeaning() {
+      document.getElementById('update-date-label').hidden = updateType.value !== 'evolution';
+      document.getElementById('update-meaning').textContent = updateType.value === 'correction'
+        ? '纠正表示：原记录在记录时就是错误的。原记录不会删除，但以后不再作为有效事实。生效日期继承原记录，未知则保持未知。'
+        : updateType.value === 'evolution'
+        ? '变化表示：原记录过去可能是正确的，新的状态从指定日期开始生效。旧状态保留为历史事实。'
+        : '请由你明确决定更新语义，系统不会自动判断。';
+    }
+    function openUpdate(memory) {
+      if (deciding || generating || revoking || saving) return;
+      choices.forEach((choice) => { choice.checkbox.checked = false; }); updateSelection();
+      updateOriginal = memory;
+      updateType.value = ''; updateContent.value = ''; updateTags.value = JSON.stringify(memory.tags);
+      updateSource.value = ''; updateDate.value = '';
+      document.getElementById('update-original').textContent = '原 Memory ID：' + memory.id + '\n原内容：' + memory.content;
+      updateForm.hidden = false; updateStatus.textContent = '先查看更新预览；保存不代表模型授权。';
+      clearUpdateDraft(); updateMeaning();
+    }
+    function updateInputs() {
+      if (!updateOriginal) throw new Error('请先选择要更新的具体 Memory。');
+      if (!['correction','evolution'].includes(updateType.value)) throw new Error('请明确选择更新语义。');
+      if (!updateContent.value.trim() || !updateSource.value.trim()) throw new Error('请填写新内容和来源。');
+      let tags;
+      try { tags = JSON.parse(updateTags.value); } catch { throw new Error('标签必须是 JSON 字符串数组，例如 ["fictional","颜色"]。'); }
+      if (!Array.isArray(tags) || tags.some((tag) => typeof tag !== 'string' || !tag.trim())) throw new Error('标签必须是非空字符串数组（可以为空数组）。');
+      if (updateType.value === 'evolution' && !updateDate.value) throw new Error('变化必须填写生效日期 YYYY-MM-DD。');
+      return { previous_memory_id: updateOriginal.id, relationship_type: updateType.value,
+        content: updateContent.value.trim(), tags, source: updateSource.value.trim(),
+        effective_from: updateType.value === 'evolution' ? updateDate.value : null };
+    }
+    [updateType, updateContent, updateTags, updateSource, updateDate].forEach((input) => input.addEventListener(input === updateType ? 'change' : 'input', () => {
+      clearUpdateDraft(); updateMeaning(); updateStatus.textContent = '更新输入已变化，请重新查看更新预览。';
+    }));
+    document.getElementById('update-cancel').addEventListener('click', () => {
+      if (saving) return;
+      clearUpdateDraft(); updateOriginal = null; updateForm.hidden = true;
+    });
+    document.getElementById('update-preview-button').addEventListener('click', async () => {
+      if (saving || deciding || generating || revoking) return;
+      clearUpdateDraft();
+      const version = updateRevision;
+      try {
+        const data = updateInputs();
+        await invalidation;
+        if (version !== updateRevision) return;
+        const response = await fetch('/update-preview', { method: 'POST', headers, body: JSON.stringify(data), cache: 'no-store' });
+        const result = await response.json();
+        if (version !== updateRevision) return;
+        if (!response.ok) throw new Error(result.error || '更新预览失败');
+        updateDraft = { update_id: result.update_id, ...data };
+        document.getElementById('update-preview-text').textContent = [
+          '旧 ID：' + result.previous_memory_id, '旧内容：' + result.previous_memory.content,
+          '更新类型：' + (result.relationship_type === 'correction' ? 'Correction（原记录有误）' : 'Evolution（状态变化）'),
+          '新内容：' + result.content, '标签：' + JSON.stringify(result.tags), '来源：' + result.source,
+          'effective_from：' + (result.effective_from || '未知；不会用创建时间替代'),
+          '关系说明：旧 → ' + (result.relationship_type === 'correction' ? 'corrected_by' : 'evolved_to') + ' → 新；新记录使用新 ID，旧 JSON 保持不变。',
+          '尚未保存，尚未授权。'
+        ].join('\n');
+        updatePreview.hidden = false; updateSave.disabled = false; updateStatus.textContent = '更新预览已生成，尚未保存。';
+      } catch (error) { if (version === updateRevision) updateStatus.textContent = error.message; }
+    });
+    updateSave.addEventListener('click', async () => {
+      if (!updateDraft || updateSave.disabled || saving || deciding || generating || revoking) return;
+      let data;
+      try { data = updateInputs(); } catch (error) { clearUpdateDraft(); updateStatus.textContent = error.message; return; }
+      const {update_id, ...original} = updateDraft;
+      if (JSON.stringify(data) !== JSON.stringify(original)) { clearUpdateDraft(); updateStatus.textContent = '输入已变化，请重新预览。'; return; }
+      saving = true; updateSave.disabled = true;
+      const controls = pageControls(); controls.forEach((control) => { control.disabled = true; });
+      try {
+        await invalidation;
+        const response = await fetch('/update-save', { method: 'POST', headers,
+          body: JSON.stringify({ update_id, ...data, user_confirmed: true }), cache: 'no-store' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || '未保存，请重新预览');
+        updateDraft = null; updatePreview.hidden = true;
+        queuePreviewCleanup({reason: 'memory_saved'});
+        modeInput.value = 'current'; dateInput.value = ''; chainInput.value = '';
+        document.getElementById('date-label').hidden = true; document.getElementById('chain-label').hidden = true;
+        activeQuery = { mode: result.mode, query_date: result.query_date };
+        renderMemories(result);
+        updateStatus.textContent = '已保存新的 Memory ID：' + result.memory_id + '。原记录保留；选择、授权和 Context 已清除。已重新读取当前状态，请重新选择。';
+        searchStatus.textContent = '更新后已重新读取当前有效 Memory，尚未选择、尚未授权。';
+      } catch (error) { updateDraft = null; updateStatus.textContent = error.message + '；请重新查看更新预览。'; }
+      finally { saving = false; controls.forEach((control) => { control.disabled = false; }); searchInput.disabled = modeInput.value === 'evolution'; }
+    });
+    window.addEventListener('pageshow', (event) => {
+      choices.forEach((choice) => { choice.checkbox.checked = false; });
+      updateSelection();
+      event.persisted ? queuePreviewCleanup({reason: 'page_restored'}) : clearPreviewDisplay();
+      updateDraft = null; updateSave.disabled = true; updatePreview.hidden = true;
+      status.textContent = '';
+    });
+    updateSelection();
+  </script>
+</body>
+</html>

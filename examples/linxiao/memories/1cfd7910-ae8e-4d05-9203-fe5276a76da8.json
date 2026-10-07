@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": "1cfd7910-ae8e-4d05-9203-fe5276a76da8",
+  "content": "虚构 Demo 数据：林晓正在学习日语，希望每天保持20分钟练习。",
+  "tags": [
+    "fictional",
+    "日语",
+    "学习",
+    "长期目标"
+  ],
+  "source": "fictional demo fixture / explicitly confirmed",
+  "user_confirmed": true,
+  "created_at": "2026-10-06T22:24:29.9699103+08:00"
+}

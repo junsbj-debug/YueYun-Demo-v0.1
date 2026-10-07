@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": "dadea39c-b4eb-4700-9c7a-7e8a71ed0dfa",
+  "content": "虚构 Demo 数据：林晓不喜欢把旅行行程安排得太满，希望每天留出自由时间。",
+  "tags": [
+    "fictional",
+    "旅行",
+    "行程",
+    "偏好"
+  ],
+  "source": "fictional demo fixture / explicitly confirmed",
+  "user_confirmed": true,
+  "created_at": "2026-10-06T22:24:29.9699103+08:00"
+}

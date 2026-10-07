@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "id": "57b57f6d-d6c0-47d7-8bd8-09d8d5f19e11",
+  "content": "虚构 Demo 数据：林晓购买电子产品时更看重稳定性和使用寿命，而不是最高性能。",
+  "tags": [
+    "fictional",
+    "电子产品",
+    "稳定性",
+    "购买偏好"
+  ],
+  "source": "fictional demo fixture / explicitly confirmed",
+  "user_confirmed": true,
+  "created_at": "2026-10-06T22:24:29.9699103+08:00"
+}

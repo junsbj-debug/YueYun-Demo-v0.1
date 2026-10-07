@@ -1,0 +1,4 @@
+/data/memories/*
+/data/authorizations/*
+__pycache__/
+*.pyc
