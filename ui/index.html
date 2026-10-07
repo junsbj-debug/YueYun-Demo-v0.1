@@ -12,9 +12,9 @@
     .memory { background: white; border: 1px solid #dde3ec; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
     h2 { margin-top: 0; font-size: 20px; }
     h3 { font-size: 16px; }
-    dl { display: grid; grid-template-columns: 100px 1fr; gap: 10px 16px; }
-    dt { color: #59677b; }
-    dd { margin: 0; overflow-wrap: anywhere; }
+    dl { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 10px 16px; }
+    dt { color: #59677b; min-width: 0; overflow-wrap: anywhere; }
+    dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
     .content { white-space: pre-wrap; overflow-wrap: anywhere; }
     .selection { background: #eaf0f8; padding: 16px; border-radius: 8px; margin-bottom: 24px; }
     .select-memory { display: block; margin-bottom: 16px; cursor: pointer; }
