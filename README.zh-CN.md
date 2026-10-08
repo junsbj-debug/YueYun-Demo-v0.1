@@ -6,6 +6,12 @@
 
 这是 YueYun 个人数字连续性系统的第一个可运行工程原型。
 
+## 演示视频
+
+[观看 / 下载 YueYun v0.1.0 官方英文演示（3分28秒）](https://github.com/junsbj-debug/YueYun-Demo-v0.1/releases/download/v0.1.0/YueYun_v0.1.0_Official_English_Demo_Contrast_v3.mp4)
+
+视频展示本地长期记忆、用户显式授权、一次性 Context 生成，以及在 ChatGPT 和 Claude 之间手动复用授权记忆的完整流程。
+
 ## What is YueYun Demo v0.1?
 
 一个 local-first 的 Personal Continuity 最小工程研究原型：验证长期个人 Memory 能否独立于具体 AI 模型，由用户保存、检索、选择和授权，并在不同模型之间重复使用。
