@@ -6,6 +6,12 @@ Project start date: 2026-10-05
 
 The first runnable engineering prototype of the YueYun Personal Continuity system.
 
+## Demo Video
+
+[Watch / Download the Official English Demo (3 min 28 sec)](https://github.com/junsbj-debug/YueYun-Demo-v0.1/releases/download/v0.1.0/YueYun_v0.1.0_Official_English_Demo_Contrast_v3.mp4)
+
+This video demonstrates local memory, explicit user authorization, one-time context generation, and manual cross-model use with ChatGPT and Claude.
+
 ## What is YueYun Demo v0.1?
 
 YueYun is a minimal, local-first engineering research prototype for personal continuity. It explores whether long-term personal Memory can remain independent of a specific AI model, under user control for storage, retrieval, selection, authorization, and reuse with different models.
